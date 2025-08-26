@@ -1,0 +1,16 @@
+../Core/Src/main.c:126:6:Delay_Micro_Seconds	2
+../Core/Src/main.c:132:19:CAN_TransmitMessage_Std_ID	3
+../Core/Src/main.c:169:19:CAN_TransmitMessage_Ext_ID	3
+../Core/Src/main.c:200:6:HAL_CAN_RxFifo0MsgPendingCallback	3
+../Core/Src/main.c:252:5:main	1
+../Core/Src/main.c:374:6:SystemClock_Config	4
+../Core/Src/main.c:421:13:MX_ADC1_Init	6
+../Core/Src/main.c:509:13:MX_CAN_Init	2
+../Core/Src/main.c:546:13:MX_TIM1_Init	5
+../Core/Src/main.c:611:13:MX_TIM3_Init	4
+../Core/Src/main.c:656:13:MX_GPIO_Init	1
+../Core/Src/main.c:741:6:Read_Sensors_Func	1
+../Core/Src/main.c:772:6:CANRX_Data_Process_Func	2
+../Core/Src/main.c:824:6:StartTask03	1
+../Core/Src/main.c:843:6:HAL_TIM_PeriodElapsedCallback	2
+../Core/Src/main.c:861:6:Error_Handler	1

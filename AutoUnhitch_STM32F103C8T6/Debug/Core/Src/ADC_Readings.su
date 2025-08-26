@@ -1,0 +1,8 @@
+../Core/Src/ADC_Readings.c:10:6:ADC_Select_CH0	24	static
+../Core/Src/ADC_Readings.c:24:6:ADC_Select_CH1	24	static
+../Core/Src/ADC_Readings.c:38:6:ADC_Select_CH2	24	static
+../Core/Src/ADC_Readings.c:52:6:ADC_Select_CH3	24	static
+../Core/Src/ADC_Readings.c:70:10:ADC_Auto_Unhitch_Read	16	static
+../Core/Src/ADC_Readings.c:82:9:ADC_Current_Sensor_1_Read	32	static
+../Core/Src/ADC_Readings.c:99:9:ADC_Current_Sensor_2_Read	32	static
+../Core/Src/ADC_Readings.c:115:10:ADC_24V_Read	24	static
