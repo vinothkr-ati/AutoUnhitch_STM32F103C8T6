@@ -13,6 +13,11 @@
   * in the root directory of this software component.
   * If no LICENSE file comes with this software, it is provided AS-IS.
   *
+  *
+  *
+  *
+  *
+  *
   ******************************************************************************
   */
 /* USER CODE END Header */
@@ -23,31 +28,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-volatile uint8_t aa = 0;
-volatile uint8_t bb = 0;
-volatile uint8_t cc = 0;
-volatile uint8_t dd = 0;
 
-//***************        ADC          *********************
-
-volatile uint32_t ADC_VAL[4];
-
-///////////      CAN1       ////////////////////////////
-
-CAN_RxHeaderTypeDef CAN1RX_Header;
-volatile uint8_t    CAN1_Queue_TX[12];
-volatile uint8_t    CAN1RX_DATA[8];
-volatile uint8_t    CAN1TX_DATA[8];
-volatile uint32_t   CAN1RX_ID_Queue = 0;
-volatile uint32_t   CAN1RX_IDE_DATA = 0;
-volatile uint32_t   CAN1RX_Std_ID_DATA = 0;
-volatile uint32_t   CAN1RX_Ext_ID_DATA = 0;
+#include <stdbool.h>
 
 
-///**************  GPIO READ
-volatile uint8_t DIGITAL_SENSE1 = 0;
-volatile uint8_t DIGITAL_SENSE2 = 0;
-volatile uint8_t nFAULT         = 0;
 
 /* USER CODE END Includes */
 
@@ -59,6 +43,58 @@ volatile uint8_t nFAULT         = 0;
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+
+
+volatile uint8_t aa = 0;
+volatile uint8_t bb = 0;
+volatile uint8_t cc = 0;
+volatile uint8_t dd = 0;
+
+
+
+//***************        ADC          *********************
+volatile uint32_t ADC_VAL[4];
+///////////      CAN1       ////////////////////////////
+
+CAN_RxHeaderTypeDef  CAN1RX_Header;
+volatile uint8_t     CAN1_Queue_TX[12];
+volatile uint8_t     CAN1RX_DATA[8];
+volatile uint8_t     CAN1TX_DATA[8];
+
+
+volatile uint32_t   CAN1RX_ID_Queue = 0;
+volatile uint32_t   CAN1RX_IDE_DATA = 0;
+volatile uint32_t   CAN1RX_Std_ID_DATA = 0;
+volatile uint32_t   CAN1RX_Ext_ID_DATA = 0;
+
+
+///**************  GPIO READ
+volatile uint8_t DIGITAL_SENSE1 = 0;
+volatile uint8_t DIGITAL_SENSE2 = 0;
+volatile uint8_t nFAULT         = 0;
+
+
+//***************   PWM  *************
+#define Auto_Unhitch_RX_CANID 0x11155
+#define PWM_SCALE 5
+volatile uint8_t AutoUnhitch_PWM_DC_Percentage = 100 ;
+uint32_t Duty_Cycle1 ;
+
+
+//**************** Errors ********
+
+volatile bool ISEN_Error = false;
+volatile bool ISEN_200ms_Timeout = false;
+
+
+//************  Sensors
+volatile float ISEN_Current =0;
+volatile float CANTX_ISEN = 0;
+
+volatile float VSEN_24V =0;
+volatile float CANTX_VSEN_24V = 0;
+
+volatile bool DIR_AUTOUNHITCH = 0;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -88,10 +124,10 @@ const osThreadAttr_t CANRX_Data_Proc_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for myTask03 */
-osThreadId_t myTask03Handle;
-const osThreadAttr_t myTask03_attributes = {
-  .name = "myTask03",
+/* Definitions for Decision_Making */
+osThreadId_t Decision_MakingHandle;
+const osThreadAttr_t Decision_Making_attributes = {
+  .name = "Decision_Making",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
@@ -113,7 +149,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
 void Read_Sensors_Func(void *argument);
 void CANRX_Data_Process_Func(void *argument);
-void StartTask03(void *argument);
+void Decision_Making_Function(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -122,6 +158,51 @@ void StartTask03(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+
+//uint8_t Read_ISEN_Current(){
+//
+//
+//}
+
+float Read_ISEN_Current(uint32_t ADC_RAW_VAL[]){
+
+	float ISEN_Current_Result;
+	float x ,cal ;
+	x =   (float)ADC_RAW_VAL[0];
+	// printf("%f\n",x);
+	cal =  (x/4095)*3.3*6.094  ;
+	//  printf("%f\n",cal);
+	ISEN_Current_Result = cal + 0.3;
+	//  printf("%f\n",offset);
+	//  converted = offset *10;
+	//  printf("%f\n",converted);
+	//  result = (uint8_t)converted;
+	//   printf("%d\n",result);
+
+	return ISEN_Current_Result;
+
+}
+
+
+
+float Read_VSEN_24V(uint32_t ADC_RAW_VAL[]){
+
+	float VSEN_24V_Result;
+	float y  ;
+	y =   (float)ADC_RAW_VAL[3];
+	// printf("%f\n",x);
+	VSEN_24V_Result =  (y/4095)*3.3*11  ;
+	//  printf("%f\n",cal);
+
+	//  printf("%f\n",offset);
+	//  converted = offset *10;
+	//  printf("%f\n",converted);
+	//  result = (uint8_t)converted;
+	//   printf("%d\n",result);
+
+	return VSEN_24V_Result;
+
+}
 
 void Delay_Micro_Seconds (uint16_t us)
 {
@@ -282,7 +363,7 @@ int main(void)
 
 	HAL_Delay(100);// just normal
 	//Timer PWM Start for uS delay generation
-		HAL_TIM_Base_Start(&htim3);
+	HAL_TIM_Base_Start(&htim3);
 
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 	HAL_Delay(5);
@@ -293,18 +374,14 @@ int main(void)
 
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 	HAL_Delay(5);
-	 HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 
-
-	  TIM1->CCR1 = 250;
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, 1);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, 1);// PWM Direction PIN
 	//CAN Start
 	HAL_CAN_Start(&hcan);
 
 	// Activate the notification
 	HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
-
-
 
   /* USER CODE END 2 */
 
@@ -338,8 +415,8 @@ int main(void)
   /* creation of CANRX_Data_Proc */
   CANRX_Data_ProcHandle = osThreadNew(CANRX_Data_Process_Func, NULL, &CANRX_Data_Proc_attributes);
 
-  /* creation of myTask03 */
-  myTask03Handle = osThreadNew(StartTask03, NULL, &myTask03_attributes);
+  /* creation of Decision_Making */
+  Decision_MakingHandle = osThreadNew(Decision_Making_Function, NULL, &Decision_Making_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -439,7 +516,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 4;
+  hadc1.Init.NbrOfConversion = 1;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -729,6 +806,8 @@ static void MX_GPIO_Init(void)
 //
 //aa++;
 //osDelay(100);
+
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_Read_Sensors_Func */
@@ -741,19 +820,95 @@ static void MX_GPIO_Init(void)
 void Read_Sensors_Func(void *argument)
 {
   /* USER CODE BEGIN 5 */
+
   /* Infinite loop */
   for(;;)
   {
 
+	//All ADC Read
 	ADC_Auto_Unhitch_Read(ADC_VAL);
 	ADC_Current_Sensor_1_Read(ADC_VAL);
 	ADC_Current_Sensor_2_Read(ADC_VAL);
 	ADC_24V_Read(ADC_VAL);
 
+	// Read ISEN Current
+	ISEN_Current = Read_ISEN_Current(ADC_VAL);
 
+	// Read 24V
+	VSEN_24V = Read_VSEN_24V(ADC_VAL);
+
+
+	// Convert for CANTX fact *10
+	CANTX_ISEN = ISEN_Current *10;
+
+	// Convert for CANTX fact *10
+	CANTX_VSEN_24V = VSEN_24V *10;
+	//add scal factor 10
+
+	CAN1TX_DATA[0] = (uint8_t)CANTX_ISEN ;
+	CAN1TX_DATA[1] = ADC_VAL[1];
+	CAN1TX_DATA[2] = ADC_VAL[2];
+	CAN1TX_DATA[3] = (uint8_t)CANTX_VSEN_24V;
+
+
+	// ALL GPIO READ
 	DIGITAL_SENSE1 = HAL_GPIO_ReadPin(GPIOB ,GPIO_PIN_15);
 	DIGITAL_SENSE2 = HAL_GPIO_ReadPin(GPIOB ,GPIO_PIN_14);
-	nFAULT = HAL_GPIO_ReadPin(GPIOA ,GPIO_PIN_10);
+	nFAULT         = HAL_GPIO_ReadPin(GPIOA ,GPIO_PIN_10);
+
+
+	if(DIGITAL_SENSE1 == 0)  {
+		//set bit 0 = 0
+		CAN1TX_DATA[4] &= ~(1 << 0);
+	}else {
+		//set bit 0 = 1
+		CAN1TX_DATA[4] |=  (1 << 0);
+	}
+
+	if(DIGITAL_SENSE2 == 0)  {
+		//set bit 1 = 0
+		CAN1TX_DATA[4] &= ~(1 << 1);
+	}else {
+		//set bit 1 = 1
+		CAN1TX_DATA[4] |=  (1 << 1);
+	}
+
+
+
+
+	CAN1TX_DATA[5] = AutoUnhitch_PWM_DC_Percentage; //PWM feedback in 100%
+
+    //set bit 0 for ISEN ERROR *************************
+	if(ISEN_Error == 0)  {
+		//set bit 0 = 0
+		CAN1TX_DATA[6] &= ~(1 << 0);
+	}else {
+		//set bit 0 = 1
+		CAN1TX_DATA[6] |=  (1 << 0);
+	}
+
+	// set bit 1 for nFault         ********************************
+	if(nFAULT == 0)  {
+		//set bit 1 = 0
+		CAN1TX_DATA[6] &= ~(1 << 1);
+	}else {
+		//set bit 1 = 1
+		CAN1TX_DATA[6] |=  (1 << 1);
+	}
+
+	//set bit 2 for autounhitch direction  ***********************************
+	if(DIR_AUTOUNHITCH == 0)  {
+		//set bit 1 = 0
+		CAN1TX_DATA[6] &= ~(1 << 2);
+	}else {
+		//set bit 1 = 1
+		CAN1TX_DATA[6] |=  (1 << 2);
+	}
+
+	CAN1TX_DATA[7] = 0;
+
+    // CAN Transmit
+	CAN_TransmitMessage_Ext_ID(&hcan, 0x33333, CAN1TX_DATA, 8);
 
 	aa++;
 	osDelay(100);
@@ -774,62 +929,113 @@ void CANRX_Data_Process_Func(void *argument)
   /* USER CODE BEGIN CANRX_Data_Process_Func */
 
 	uint8_t Received_CAN1RX[12];
-		osStatus_t Status_CAN1;
+	osStatus_t Status_CAN1;
   /* Infinite loop */
   for(;;)
   {
 
-	  // Wait for and receive data from the queue
-	 			  Status_CAN1 = osMessageQueueGet(CAN1RX_Data_QueueHandle, Received_CAN1RX, NULL, osWaitForever);
-	 			  if (Status_CAN1 == osOK)  {
-	 				 // Process Received_CAN1RX data
-	 				 // Indicate processing by toggling an LED, etc.
+		// Wait for and receive data from the queue
+		Status_CAN1 = osMessageQueueGet(CAN1RX_Data_QueueHandle, Received_CAN1RX, NULL, osWaitForever);
+		if (Status_CAN1 == osOK)  {
+			// Process Received_CAN1RX data
+			// Indicate processing by toggling an LED, etc.
 
-	 				 // Reconstruct uint32_t from bb (Little-endian format)
-	 				CAN1RX_ID_Queue = 	( Received_CAN1RX[8]  <<  0 ) |
-	 									( Received_CAN1RX[9]  <<  8 ) |
-	 									( Received_CAN1RX[10] << 16 ) |
-	 									( Received_CAN1RX[11] << 24 );
+			// Reconstruct uint32_t from bb (Little-endian format)
+			CAN1RX_ID_Queue = 	( Received_CAN1RX[8]  <<  0 ) |
+			( Received_CAN1RX[9]  <<  8 ) |
+			( Received_CAN1RX[10] << 16 ) |
+			( Received_CAN1RX[11] << 24 );
 
-	 			//	switch (CAN1RX_ID_Queue) {
+			switch (CAN1RX_ID_Queue)
+			{
+				case Auto_Unhitch_RX_CANID:
+					AutoUnhitch_PWM_DC_Percentage = Received_CAN1RX[0];
 
-//	 				case BrakeRX_ID:
-//
-//
-//	 					//Reconstruct aa from bb[0] and bb[1] (little endian)
-//	 					uint16_t Left_brake   = Received_CAN1RX[0] | (Received_CAN1RX[1] << 8);
-//	 					uint16_t Right_brake  = Received_CAN1RX[2] | (Received_CAN1RX[3] << 8);
-//
-//	 					Brake1_Percentage = (float) Left_brake / 10;
-//	 					Brake2_Percentage = (float) Right_brake / 10;
-	 					//break;
-//
-//	 				default:
-//
-//	 					break;
-//	 				}
-	 			 }
-    osDelay(1);
+					if(Received_CAN1RX[1] == 1 )	{
+						HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, 1);// PWM Direction PIN
+						DIR_AUTOUNHITCH = 1;
+					}
+					if(Received_CAN1RX[1] == 0 )	{
+						HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, 0);// PWM Direction PIN
+						DIR_AUTOUNHITCH =0;
+					}
+
+
+					break;
+
+
+				default:
+					//
+					break;
+			}
+		}
+		bb++;
+        osDelay(1);
+
   }
   /* USER CODE END CANRX_Data_Process_Func */
 }
 
-/* USER CODE BEGIN Header_StartTask03 */
+/* USER CODE BEGIN Header_Decision_Making_Function */
 /**
-* @brief Function implementing the myTask03 thread.
+* @brief Function implementing the Decision_Making thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask03 */
-void StartTask03(void *argument)
+/* USER CODE END Header_Decision_Making_Function */
+void Decision_Making_Function(void *argument)
 {
-  /* USER CODE BEGIN StartTask03 */
+  /* USER CODE BEGIN Decision_Making_Function */
   /* Infinite loop */
   for(;;)
-  { cc++;
-    osDelay(10);
+  {
+		if (AutoUnhitch_PWM_DC_Percentage <= 100)	{ // No need to check >= 0, since it's uint8_t
+			if(ISEN_Error == false)	{
+				Duty_Cycle1 = ((uint32_t) AutoUnhitch_PWM_DC_Percentage) * PWM_SCALE;
+				TIM1->CCR1 = Duty_Cycle1;
+			}
+
+		}
+		//		 // current above 0.3 A
+		if(ISEN_Current > 0.4 )	{
+
+			if(ISEN_200ms_Timeout == false)  {
+				// check 200 ms in loop
+				for(int i = 0 ; i<200;i++)	{
+				// 5A above then cutoff
+				if(ISEN_Current > 4.7)	{
+				TIM1->CCR1 = 0;
+				// error code
+				ISEN_Error = true;
+				}
+				else{
+				ISEN_Error = false;
+				}
+				osDelay(1);
+				}
+				ISEN_200ms_Timeout = true;
+			}
+
+			//after 200 ms
+			// 2A above then cutoff
+			if(ISEN_Current > 2.0 && ISEN_200ms_Timeout == true)	{
+				TIM1->CCR1 = 0;
+				// error code
+				ISEN_Error = true;
+			}
+			else {
+				ISEN_Error = false;
+			}
+		}
+		else {
+			// when no current flow then the flag false
+			ISEN_200ms_Timeout = false;
+		}
+
+		cc++;
+		osDelay(1);
   }
-  /* USER CODE END StartTask03 */
+  /* USER CODE END Decision_Making_Function */
 }
 
 /**
@@ -843,6 +1049,8 @@ void StartTask03(void *argument)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
+
+
 
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM4)
