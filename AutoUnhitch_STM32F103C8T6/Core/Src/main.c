@@ -56,6 +56,9 @@ volatile uint8_t dd = 0;
 volatile uint32_t ADC_VAL[4];
 ///////////      CAN1       ////////////////////////////
 
+#define Auto_Unhitch_RX_CANID 0x11155
+#define Auto_Unhitch_TX_CANID 0x33333
+
 CAN_RxHeaderTypeDef  CAN1RX_Header;
 volatile uint8_t     CAN1_Queue_TX[12];
 volatile uint8_t     CAN1RX_DATA[8];
@@ -75,7 +78,7 @@ volatile uint8_t nFAULT         = 0;
 
 
 //***************   PWM  *************
-#define Auto_Unhitch_RX_CANID 0x11155
+
 #define PWM_SCALE 5
 volatile uint8_t AutoUnhitch_PWM_DC_Percentage = 100 ;
 uint32_t Duty_Cycle1 ;
@@ -172,7 +175,7 @@ float Read_ISEN_Current(uint32_t ADC_RAW_VAL[]){
 	// printf("%f\n",x);
 	cal =  (x/4095)*3.3*6.094  ;
 	//  printf("%f\n",cal);
-	ISEN_Current_Result = cal + 0.3;
+	ISEN_Current_Result = cal ;
 	//  printf("%f\n",offset);
 	//  converted = offset *10;
 	//  printf("%f\n",converted);
@@ -832,7 +835,12 @@ void Read_Sensors_Func(void *argument)
 	ADC_24V_Read(ADC_VAL);
 
 	// Read ISEN Current
+	ISEN_Current = 0;
 	ISEN_Current = Read_ISEN_Current(ADC_VAL);
+	if(ISEN_Current > 0.2){
+		ISEN_Current = ISEN_Current + 0.3;
+
+	}
 
 	// Read 24V
 	VSEN_24V = Read_VSEN_24V(ADC_VAL);
@@ -908,7 +916,7 @@ void Read_Sensors_Func(void *argument)
 	CAN1TX_DATA[7] = 0;
 
     // CAN Transmit
-	CAN_TransmitMessage_Ext_ID(&hcan, 0x33333, CAN1TX_DATA, 8);
+	CAN_TransmitMessage_Ext_ID(&hcan, Auto_Unhitch_TX_CANID, CAN1TX_DATA, 8);
 
 	aa++;
 	osDelay(100);
@@ -997,7 +1005,9 @@ void Decision_Making_Function(void *argument)
 
 		}
 		//		 // current above 0.3 A
-		if(ISEN_Current > 0.4 )	{
+		if(ISEN_Current > 0.1 )	{
+			// adding offset
+
 
 			if(ISEN_200ms_Timeout == false)  {
 				// check 200 ms in loop
