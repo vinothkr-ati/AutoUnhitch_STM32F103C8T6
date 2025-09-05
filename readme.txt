@@ -5,6 +5,17 @@
 
 Auto_Unhitch_RX_CANID 0x11155
 
+
+
+byte [0] = AutoUnhitch PWM Duty Cycle Percentage
+
+byte [1] = Auto Unhith Direction [ 0 / 1]
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////
 Auto_Unhitch_TX_CANID 0x33333
 
 byte [0] = Data /10  = ISEN Current
